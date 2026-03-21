@@ -11,11 +11,11 @@ RUN apt-get update && apt-get install -y \
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ ./app/
+COPY backend/app/ ./app/
 
 RUN mkdir -p /app/uploads /app/static
 
-RUN echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><div id="root"></div><script>window.location.href="/api";</script></body></html>' > /app/static/index.html
+RUN echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><h1>Building...</h1><p>Frontend not built. Access API at <a href="/api">/api</a></p></body></html>' > /app/static/index.html
 
 EXPOSE 4000
 
