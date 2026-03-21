@@ -42,9 +42,9 @@ export const documentsAPI = {
 
 export const ragAPI = {
   search: (query: string, topK: number = 5) =>
-    api.post('/rag/search', { query, top_k: topK }),
+    api.post(`/rag/search?query=${encodeURIComponent(query)}&top_k=${topK}`),
   ask: (query: string, topK: number = 5) =>
-    api.post('/rag/ask', { query, top_k: topK }),
+    api.post(`/rag/ask?query=${encodeURIComponent(query)}&top_k=${topK}`),
 };
 
 export const adminAPI = {
