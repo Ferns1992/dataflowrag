@@ -34,7 +34,6 @@ services:
       - POSTGRES_DB=dataflowrag
     volumes:
       - uploads:/app/uploads
-      - static_files:/app/static
     ports:
       - "4030:4000"
     depends_on:
@@ -45,4 +44,3 @@ services:
 volumes:
   postgres_data:
   uploads:
-  static_files:

@@ -1,16 +1,3 @@
-FROM python:3.11-slim AS builder
-
-RUN apt-get update && apt-get install -y \
-    nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /build
-COPY frontend/package*.json ./
-RUN npm install
-
-COPY frontend/ ./
-RUN npm run build
-
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -21,13 +8,14 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /build/dist ./app/static
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./app/
 
-RUN mkdir -p /app/uploads
+RUN mkdir -p /app/uploads /app/static
+
+RUN echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><div id="root"></div><script>window.location.href="/api";</script></body></html>' > /app/static/index.html
 
 EXPOSE 4000
 
