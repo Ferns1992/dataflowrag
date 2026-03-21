@@ -1,0 +1,3 @@
+# DataFlowRAG
+
+A RAG (Retrieval-Augmented Generation) application for data flows.
