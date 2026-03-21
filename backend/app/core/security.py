@@ -39,17 +39,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def verify_token(token: str) -> Optional[TokenData]:
     try:
-        print(
-            f"DEBUG: Verifying token with SECRET_KEY length: {len(settings.SECRET_KEY)}"
-        )
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         user_id = payload.get("sub")
-        print(f"DEBUG: Token payload: {payload}")
         if user_id is None:
-            print("DEBUG: No user_id in token")
             return None
+        return TokenData(user_id=int(user_id))
+    except Exception:
+        return None
         return TokenData(user_id=int(user_id))
     except (JWTError, ValueError, TypeError) as e:
         print(f"DEBUG: Token verification failed: {e}")
