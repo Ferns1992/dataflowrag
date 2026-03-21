@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from app.core.database import get_db
@@ -66,6 +67,56 @@ async def login(
     )
 
     return Token(access_token=access_token)
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/login/json", response_model=dict)
+async def login_json(request: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == request.username).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+
+    try:
+        password_ok = verify_password(request.password, user.hashed_password)
+    except Exception as e:
+        print(f"Password verify error: {e}")
+        password_ok = False
+
+    if not user or not password_ok:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+        )
+
+    access_token = create_access_token(
+        data={"sub": user.id},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role.value if hasattr(user.role, "value") else user.role,
+            "is_active": user.is_active,
+        },
+    }
 
 
 @router.get("/me", response_model=UserResponse)
