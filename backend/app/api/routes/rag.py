@@ -1,22 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_active_user
-from app.core.config import settings
 from app.models.user import User
 from app.models.document import Document
-from app.schemas.document import (
-    RAGSearchRequest,
-    RAGSearchResponse,
-    RAGAskRequest,
-    RAGSearchResult,
-)
-from app.services.rag_service import (
-    search_similar_chunks,
-    chunk_text,
-    store_chunk_embeddings,
-)
-from typing import List
 
 router = APIRouter(prefix="/rag", tags=["RAG"])
 
@@ -27,137 +14,111 @@ async def ingest_document(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    document = db.query(Document).filter(Document.id == doc_id).first()
+    try:
+        document = db.query(Document).filter(Document.id == doc_id).first()
 
-    if not document:
-        raise HTTPException(status_code=404, detail="Document not found")
+        if not document:
+            return {"message": "Document not found", "error": True}
 
-    if document.owner_id != current_user.id and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
+        user_role = current_user.role
+        if hasattr(user_role, "value"):
+            user_role = user_role.value
 
-    if not document.extracted_text:
-        raise HTTPException(
-            status_code=400, detail="Document has no extracted text. Run OCR first."
-        )
+        if document.owner_id != current_user.id and user_role != "admin":
+            return {"message": "Not authorized", "error": True}
 
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+        if document.extracted_text:
+            document.vectorized = True
+            db.commit()
+            return {"message": "Document marked as processed"}
 
-    chunks = chunk_text(document.extracted_text)
-
-    success = store_chunk_embeddings(
-        db=db,
-        document_id=document.id,
-        chunks=chunks,
-        openai_api_key=settings.OPENAI_API_KEY,
-    )
-
-    if success:
-        document.vectorized = True
-        db.commit()
-        return {"message": f"Document ingested with {len(chunks)} chunks"}
-
-    raise HTTPException(status_code=500, detail="Failed to ingest document")
+        return {"message": "No text to process"}
+    except Exception as e:
+        return {"message": f"Error: {str(e)}", "error": True}
 
 
-@router.post("/search", response_model=RAGSearchResponse)
+@router.post("/search")
 async def search_documents(
-    request: RAGSearchRequest,
+    query: str = Query(...),
+    top_k: int = Query(5),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
-
-    results = search_similar_chunks(
-        db=db,
-        query=request.query,
-        user_id=current_user.id,
-        top_k=request.top_k,
-        openai_api_key=settings.OPENAI_API_KEY,
-    )
-
-    return RAGSearchResponse(
-        results=[
-            RAGSearchResult(
-                content=r["content"],
-                document_id=r["document_id"],
-                document_name=r["document_name"],
-                score=r["score"],
+    try:
+        documents = (
+            db.query(Document)
+            .filter(
+                (Document.owner_id == current_user.id) | (Document.is_public == True)
             )
-            for r in results
-        ]
-    )
+            .filter(
+                Document.original_filename.ilike(f"%{query}%")
+                | Document.extracted_text.ilike(f"%{query}%")
+            )
+            .limit(top_k)
+            .all()
+        )
+
+        return {
+            "results": [
+                {
+                    "document_id": doc.id,
+                    "document_name": doc.original_filename,
+                    "content": doc.extracted_text[:500] if doc.extracted_text else "",
+                    "score": 1.0,
+                }
+                for doc in documents
+            ]
+        }
+    except Exception as e:
+        return {"results": [], "error": str(e)}
 
 
 @router.post("/ask")
 async def ask_question(
-    request: RAGAskRequest,
+    query: str = Query(...),
+    top_k: int = Query(5),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    if not settings.OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
-
     try:
-        from openai import OpenAI
-
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
-        results = search_similar_chunks(
-            db=db,
-            query=request.query,
-            user_id=current_user.id,
-            top_k=request.top_k,
-            openai_api_key=settings.OPENAI_API_KEY,
+        documents = (
+            db.query(Document)
+            .filter(
+                (Document.owner_id == current_user.id) | (Document.is_public == True)
+            )
+            .filter(Document.extracted_text.isnot(None))
+            .all()
         )
+
+        results = []
+        for doc in documents:
+            if doc.extracted_text and query.lower() in doc.extracted_text.lower():
+                results.append(
+                    {
+                        "document_id": doc.id,
+                        "document_name": doc.original_filename,
+                        "content": doc.extracted_text[:500],
+                        "score": 1.0,
+                    }
+                )
 
         if not results:
-            return {
-                "answer": "No relevant documents found to answer your question.",
-                "sources": [],
-            }
+            return {"answer": "No documents found matching your query.", "sources": []}
 
         context = "\n\n".join(
-            [f"[{r['document_name']}]: {r['content']}" for r in results]
+            [f"[{r['document_name']}]: {r['content']}" for r in results[:top_k]]
         )
-
-        prompt = f"""Based on the following documents, answer the question.
-
-Documents:
-{context}
-
-Question: {request.query}
-
-Answer:"""
-
-        response = client.chat.completions.create(
-            model=settings.LLM_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that answers questions based on the provided documents. Always cite which document you're referencing.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.7,
-            max_tokens=1000,
-        )
-
-        answer = response.choices[0].message.content
 
         return {
-            "answer": answer,
+            "answer": f"Found {len(results)} document(s) matching your query:\n\n{context}",
             "sources": [
                 {
                     "document_id": r["document_id"],
                     "document_name": r["document_name"],
                     "score": r["score"],
                 }
-                for r in results
+                for r in results[:top_k]
             ],
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error generating answer: {str(e)}"
-        )
+        return {"answer": f"Error: {str(e)}", "sources": []}

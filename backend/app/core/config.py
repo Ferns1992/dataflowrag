@@ -27,8 +27,10 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 100 * 1024 * 1024
 
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY", "")
-    EMBEDDING_MODEL: str = "text-embedding-ada-002"
-    LLM_MODEL: str = "gpt-3.5-turbo"
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "mxbai-embed-large")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama3.2")
+    OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    USE_OLLAMA: bool = os.getenv("USE_OLLAMA", "true").lower() == "true"
 
     class Config:
         case_sensitive = True

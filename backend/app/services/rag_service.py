@@ -1,5 +1,6 @@
 from typing import List, Optional
 import numpy as np
+import requests
 from sqlalchemy.orm import Session
 from app.models.document import DocumentChunk, Document
 from app.core.config import settings
@@ -29,13 +30,20 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 100) -> List[st
     return chunks
 
 
-def get_embedding(text: str, openai_api_key: str) -> Optional[List[float]]:
-    try:
-        from openai import OpenAI
+def get_embedding(text: str, ollama_url: str = None) -> Optional[List[float]]:
+    if ollama_url is None:
+        ollama_url = settings.OLLAMA_URL
 
-        client = OpenAI(api_key=openai_api_key)
-        response = client.embeddings.create(model=settings.EMBEDDING_MODEL, input=text)
-        return response.data[0].embedding
+    try:
+        response = requests.post(
+            f"{ollama_url}/api/embeddings",
+            json={"model": settings.EMBEDDING_MODEL, "prompt": text},
+            timeout=30,
+        )
+        if response.status_code == 200:
+            return response.json().get("embedding")
+        print(f"Embedding error: {response.status_code} - {response.text}")
+        return None
     except Exception as e:
         print(f"Embedding error: {e}")
         return None
@@ -48,8 +56,11 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 
 
 def store_chunk_embeddings(
-    db: Session, document_id: int, chunks: List[str], openai_api_key: str
+    db: Session, document_id: int, chunks: List[str], ollama_url: str = None
 ) -> bool:
+    if ollama_url is None:
+        ollama_url = settings.OLLAMA_URL
+
     try:
         existing_chunks = (
             db.query(DocumentChunk)
@@ -61,7 +72,11 @@ def store_chunk_embeddings(
         db.commit()
 
         for i, chunk_text in enumerate(chunks):
-            embedding = get_embedding(chunk_text, openai_api_key)
+            embedding = get_embedding(chunk_text, ollama_url)
+            if embedding is None:
+                print(f"Failed to get embedding for chunk {i}")
+                continue
+
             chunk_record = DocumentChunk(
                 document_id=document_id,
                 chunk_index=i,
@@ -83,13 +98,13 @@ def search_similar_chunks(
     query: str,
     user_id: int,
     top_k: int = 5,
-    openai_api_key: Optional[str] = None,
+    ollama_url: str = None,
 ) -> List[dict]:
-    if not openai_api_key:
-        return []
+    if ollama_url is None:
+        ollama_url = settings.OLLAMA_URL
 
     try:
-        query_embedding = get_embedding(query, openai_api_key)
+        query_embedding = get_embedding(query, ollama_url)
         if not query_embedding:
             return []
 
@@ -110,9 +125,9 @@ def search_similar_chunks(
             if not chunk.content:
                 continue
 
-            chunk_embedding = get_embedding(chunk.content[:1000], openai_api_key)
+            chunk_embedding = get_embedding(chunk.content[:1000], ollama_url)
             if not chunk_embedding:
-                chunk_embedding = [0.0] * 1536
+                continue
 
             similarity = cosine_similarity(query_embedding, chunk_embedding)
             doc = db.query(Document).filter(Document.id == chunk.document_id).first()
@@ -131,3 +146,30 @@ def search_similar_chunks(
     except Exception as e:
         print(f"Search error: {e}")
         return []
+
+
+def generate_answer(context: str, question: str, ollama_url: str = None) -> str:
+    if ollama_url is None:
+        ollama_url = settings.OLLAMA_URL
+
+    try:
+        prompt = f"""Based on the following documents, answer the question.
+
+Documents:
+{context}
+
+Question: {question}
+
+Answer:"""
+
+        response = requests.post(
+            f"{ollama_url}/api/generate",
+            json={"model": settings.LLM_MODEL, "prompt": prompt, "stream": False},
+            timeout=60,
+        )
+
+        if response.status_code == 200:
+            return response.json().get("response", "No response generated")
+        return f"Error: {response.status_code}"
+    except Exception as e:
+        return f"Error: {str(e)}"
