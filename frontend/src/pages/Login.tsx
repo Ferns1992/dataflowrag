@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { authAPI } from '../services/api';
+import axios from 'axios';
+
+const API_URL = '/api';
 
 interface LoginProps {
   onLogin: (token: string, user: any) => void;
@@ -17,17 +19,15 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
 
     try {
-      const response = await authAPI.login(username, password);
-      const token = response.data.access_token;
+      const response = await axios.post(`${API_URL}/auth/login/json`, {
+        username,
+        password
+      });
       
-      localStorage.setItem('token', token);
-      
-      try {
-        const userResponse = await authAPI.getMe();
-        onLogin(token, userResponse.data);
-      } catch {
-        onLogin(token, { id: 1, username, email: '', role: 'admin' });
-      }
+      const { access_token, user } = response.data;
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+      onLogin(access_token, user);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed');
     } finally {
