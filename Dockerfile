@@ -6,13 +6,12 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
     poppler-utils \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ ./app
+COPY backend/app/ ./app/
 
 RUN mkdir -p /app/uploads /app/static
 
