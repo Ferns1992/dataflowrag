@@ -5,9 +5,9 @@ services:
     image: postgres:15
     container_name: dataflowrag_db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dataflowrag
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=dataflowrag
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -17,6 +17,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: always
 
   app:
     build:
@@ -24,13 +25,13 @@ services:
       dockerfile: Dockerfile
     container_name: dataflowrag_app
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/dataflowrag
-      SECRET_KEY: your-super-secret-key-change-in-production
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      POSTGRES_SERVER: db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: dataflowrag
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/dataflowrag
+      - SECRET_KEY=your-super-secret-key-change-in-production
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=dataflowrag
     volumes:
       - uploads:/app/uploads
       - static_files:/app/static
@@ -39,7 +40,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+    restart: always
 
 volumes:
   postgres_data:
