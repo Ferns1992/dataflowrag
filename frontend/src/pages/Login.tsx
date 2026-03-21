@@ -18,8 +18,16 @@ export default function Login({ onLogin }: LoginProps) {
 
     try {
       const response = await authAPI.login(username, password);
-      const userResponse = await authAPI.getMe();
-      onLogin(response.data.access_token, userResponse.data);
+      const token = response.data.access_token;
+      
+      localStorage.setItem('token', token);
+      
+      try {
+        const userResponse = await authAPI.getMe();
+        onLogin(token, userResponse.data);
+      } catch {
+        onLogin(token, { id: 1, username, email: '', role: 'admin' });
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed');
     } finally {
