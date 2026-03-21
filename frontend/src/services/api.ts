@@ -20,10 +20,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && error.config?.url !== '/auth/login' && error.config?.url !== '/auth/login/json') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -31,12 +33,7 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (username: string, password: string) => {
-    const formData = new URLSearchParams();
-    formData.append('username', username);
-    formData.append('password', password);
-    return api.post('/auth/login', formData.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
+    return axios.post(`${API_URL}/auth/login/json`, { username, password });
   },
   register: (data: { username: string; email: string; password: string; full_name?: string }) =>
     api.post('/auth/register', data),

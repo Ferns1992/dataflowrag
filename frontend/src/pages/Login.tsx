@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
-
-const API_URL = '/api';
+import { authAPI } from '../services/api';
 
 interface LoginProps {
   onLogin: (token: string, user: any) => void;
@@ -19,11 +17,7 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/auth/login/json`, {
-        username,
-        password
-      });
-      
+      const response = await authAPI.login(username, password);
       const { access_token, user } = response.data;
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
