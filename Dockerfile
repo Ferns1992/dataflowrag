@@ -6,17 +6,14 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
     poppler-utils \
-    nginx \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ ./app
+COPY backend/ .
 
-RUN mkdir -p /app/uploads /app/static /var/www/html
-
-RUN echo '<!DOCTYPE html><html><body><h1>Build frontend first</h1></body></html>' > /var/www/html/index.html
+RUN mkdir -p /app/uploads /app/static
 
 EXPOSE 4000
 
