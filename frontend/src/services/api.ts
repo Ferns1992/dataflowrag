@@ -17,20 +17,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && error.config?.url !== '/auth/login' && error.config?.url !== '/auth/login/json') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
 export const authAPI = {
   login: (username: string, password: string) => {
     return axios.post(`${API_URL}/auth/login/json`, { username, password });
