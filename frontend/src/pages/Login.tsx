@@ -77,10 +77,6 @@ export default function Login() {
             )}
           </button>
         </form>
-        
-        <p style={{ marginTop: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Don't have an account? <a href="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>Create one</a>
-        </p>
       </div>
     </div>
   );

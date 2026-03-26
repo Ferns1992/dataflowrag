@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { authAPI } from '../services/api';
-import { useNavigate } from 'react-router-dom';
 
 export default function Register() {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -20,7 +18,7 @@ export default function Register() {
 
     try {
       await authAPI.register(formData);
-      navigate('/login');
+      window.location.href = '/login';
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed');
     } finally {
@@ -29,56 +27,83 @@ export default function Register() {
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-      <div className="card" style={{ width: '400px' }}>
-        <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>Register for DataFlowRAG</h2>
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-logo">
+          <h1>DataFlowRAG</h1>
+          <p>Create your account</p>
+        </div>
+        
         {error && <div className="error">{error}</div>}
+        
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Username</label>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+              Username
+            </label>
             <input
               type="text"
               className="input"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               required
+              placeholder="Choose a username"
             />
           </div>
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Email</label>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+              Email
+            </label>
             <input
               type="email"
               className="input"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
+              placeholder="Enter your email"
             />
           </div>
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Full Name</label>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+              Full Name
+            </label>
             <input
               type="text"
               className="input"
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              placeholder="Your full name (optional)"
             />
           </div>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>Password</label>
+          
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+              Password
+            </label>
             <input
               type="password"
               className="input"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
+              placeholder="Create a password"
             />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+          
+          <button 
+            type="submit" 
+            className="btn btn-primary" 
+            style={{ width: '100%', padding: '16px', fontSize: '16px' }}
+            disabled={loading}
+          >
+            {loading ? <span className="pulse">Creating account...</span> : 'Create Account →'}
           </button>
         </form>
-        <p style={{ marginTop: '15px', textAlign: 'center' }}>
-          Already have an account? <a href="/login">Login</a>
+        
+        <p style={{ marginTop: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Already have an account? <a href="/login" style={{ color: 'var(--accent)', fontWeight: 600 }}>Sign in</a>
         </p>
       </div>
     </div>

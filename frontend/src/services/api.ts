@@ -35,31 +35,21 @@ export const documentsAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   download: async (id: number, filename: string = 'document') => {
-    const token = localStorage.getItem('token');
     try {
-      const response = await fetch(`${API_URL}/documents/${id}/download`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await api.get(`/documents/${id}/download`, {
+        responseType: 'blob',
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Download failed');
-      }
-      
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = url;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error: any) {
-      throw new Error(error.message || 'Download failed');
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      throw error;
     }
   },
   delete: (id: number) => api.delete(`/documents/${id}`),
@@ -78,6 +68,9 @@ export const adminAPI = {
   listUsers: () => api.get('/admin/users'),
   updateUserRole: (userId: number, role: string) =>
     api.put(`/admin/users/${userId}/role`, { role }),
+  toggleActive: (userId: number, isActive: boolean) =>
+    api.put(`/admin/users/${userId}/role`, { is_active: isActive }),
+  deleteUser: (userId: number) => api.delete(`/admin/users/${userId}`),
 };
 
 export default api;
