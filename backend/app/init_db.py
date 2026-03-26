@@ -18,11 +18,12 @@ def init_db():
             admin_user.hashed_password = get_password_hash("admin")
             admin_user.is_active = True
             admin_user.role = UserRole.ADMIN
+            admin_user.email = "admin@example.com"
         else:
             print("Creating admin user...")
             admin_user = User(
                 username="admin",
-                email="admin@dataflowrag.local",
+                email="admin@example.com",
                 full_name="Administrator",
                 hashed_password=get_password_hash("admin"),
                 role=UserRole.ADMIN,

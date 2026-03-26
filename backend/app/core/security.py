@@ -48,10 +48,6 @@ def verify_token(token: str) -> Optional[TokenData]:
         return TokenData(user_id=int(user_id))
     except Exception:
         return None
-        return TokenData(user_id=int(user_id))
-    except (JWTError, ValueError, TypeError) as e:
-        print(f"DEBUG: Token verification failed: {e}")
-        return None
 
 
 async def get_current_user(
@@ -83,7 +79,12 @@ def require_role(allowed_roles: list[str]):
     async def role_checker(
         current_user: User = Depends(get_current_active_user),
     ) -> User:
-        if current_user.role not in allowed_roles:
+        user_role = (
+            current_user.role.value
+            if hasattr(current_user.role, "value")
+            else str(current_user.role)
+        )
+        if user_role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
             )
