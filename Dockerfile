@@ -6,7 +6,12 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
     poppler-utils \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm
 
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -15,9 +20,12 @@ COPY backend/app/ ./app/
 
 RUN mkdir -p /app/uploads /app/static
 
-RUN echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><h1>Building...</h1><p>Run build.sh first</p></body></html>' > /app/static/index.html
+COPY frontend/package*.json ./frontend/
+WORKDIR /app/frontend
+RUN npm install && npm run build
+WORKDIR /app
 
-RUN if [ -d "frontend/dist" ]; then cp -r frontend/dist/* /app/static/; fi
+COPY frontend/dist ./app/static/
 
 EXPOSE 4000
 
