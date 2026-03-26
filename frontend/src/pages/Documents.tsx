@@ -71,7 +71,7 @@ export default function Documents() {
   const handleIngest = async (id: number) => {
     try {
       await documentsAPI.ingest(id);
-      alert('Document ingested successfully');
+      alert('Document indexed successfully');
       loadDocuments();
     } catch (err) {
       console.error('Ingest failed:', err);
@@ -91,19 +91,19 @@ export default function Documents() {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
         <h1>Documents</h1>
-        <div style={{ display: 'flex', gap: '15px' }}>
+        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
           <input
             type="text"
             className="input"
             placeholder="Search documents..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '300px' }}
+            style={{ width: '250px' }}
           />
-          <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
-            {uploading ? 'Uploading...' : 'Upload'}
+          <label className="btn btn-primary" style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {uploading ? 'Uploading...' : '+ Upload'}
             <input
               ref={fileInputRef}
               type="file"
@@ -132,25 +132,36 @@ export default function Documents() {
                 <th>Filename</th>
                 <th>Size</th>
                 <th>Type</th>
-                <th>OCR</th>
-                <th>Vectorized</th>
+                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredDocs.map((doc) => (
                 <tr key={doc.id}>
-                  <td>{doc.original_filename}</td>
+                  <td style={{ fontWeight: 500 }}>{doc.original_filename}</td>
                   <td>{formatFileSize(doc.file_size)}</td>
-                  <td>{doc.file_extension}</td>
-                  <td>{doc.ocr_completed ? '✓' : '✗'}</td>
-                  <td>{doc.vectorized ? '✓' : '✗'}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '5px' }}>
+                    <span className="badge" style={{ background: '#667eea20', color: '#667eea' }}>
+                      {doc.file_extension}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`badge ${doc.ocr_completed ? 'badge-success' : 'badge-warning'}`}>
+                      {doc.ocr_completed ? '✓ OCR Done' : '○ Processing'}
+                    </span>
+                    {doc.vectorized && (
+                      <span className="badge badge-success" style={{ marginLeft: '5px' }}>
+                        ✓ Indexed
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       <a
                         href={documentsAPI.download(doc.id)}
                         className="btn btn-primary"
-                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                        style={{ padding: '8px 16px', fontSize: '13px' }}
                       >
                         Download
                       </a>
@@ -158,15 +169,15 @@ export default function Documents() {
                         <button
                           onClick={() => handleIngest(doc.id)}
                           className="btn btn-primary"
-                          style={{ padding: '5px 10px', fontSize: '12px' }}
+                          style={{ padding: '8px 16px', fontSize: '13px' }}
                         >
-                          Ingest
+                          Index
                         </button>
                       )}
                       <button
                         onClick={() => handleDelete(doc.id)}
                         className="btn btn-danger"
-                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                        style={{ padding: '8px 16px', fontSize: '13px' }}
                       >
                         Delete
                       </button>

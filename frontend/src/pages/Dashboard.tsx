@@ -34,42 +34,36 @@ export default function Dashboard({ user }: { user: User }) {
 
   return (
     <div className="container">
-      <h1 style={{ marginBottom: '30px' }}>Welcome, {user.username}!</h1>
+      <h1>Welcome, {user.username}!</h1>
       
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
-        <div className="card">
+      <div className="stats-grid">
+        <div className="stat-card">
           <h3>Total Documents</h3>
-          <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#007bff' }}>
-            {loading ? '...' : stats.total}
-          </p>
+          <p>{loading ? '...' : stats.total}</p>
         </div>
-        <div className="card">
+        <div className="stat-card">
           <h3>OCR Processed</h3>
-          <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#28a745' }}>
-            {loading ? '...' : stats.processed}
-          </p>
+          <p>{loading ? '...' : stats.processed}</p>
         </div>
-        <div className="card">
-          <h3>Vectorized</h3>
-          <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#6610f2' }}>
-            {loading ? '...' : stats.vectorized}
-          </p>
+        <div className="stat-card">
+          <h3>Indexed</h3>
+          <p>{loading ? '...' : stats.vectorized}</p>
         </div>
       </div>
 
       <div className="card">
-        <h2 style={{ marginBottom: '20px' }}>Quick Actions</h2>
-        <div style={{ display: 'flex', gap: '15px' }}>
+        <h2>Quick Actions</h2>
+        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
           <a href="/documents" className="btn btn-primary">Upload Documents</a>
           <a href="/rag" className="btn btn-primary">Search Documents</a>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: '20px' }}>
-        <h2 style={{ marginBottom: '15px' }}>Account Information</h2>
+        <h2>Account Information</h2>
         <p><strong>Username:</strong> {user.username}</p>
         <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Role:</strong> {user.role}</p>
+        <p><strong>Role:</strong> <span className="badge badge-success">{user.role}</span></p>
       </div>
     </div>
   );
