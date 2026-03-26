@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { documentsAPI } from '../services/api';
+import { documentsAPI, adminAPI, authAPI } from '../services/api';
 
 interface Document {
   id: number;
@@ -11,6 +11,20 @@ interface Document {
   vectorized: boolean;
   is_public: boolean;
   created_at: string;
+  owner_id?: number;
+}
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+}
+
+interface DocAccess {
+  user_id: number;
+  username: string;
+  email: string;
 }
 
 export default function Documents() {
@@ -20,9 +34,13 @@ export default function Documents() {
   const [search, setSearch] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [sharingDoc, setSharingDoc] = useState<Document | null>(null);
+  const [docAccess, setDocAccess] = useState<DocAccess[]>([]);
 
   useEffect(() => {
     loadDocuments();
+    loadUsers();
   }, []);
 
   const loadDocuments = async () => {
@@ -33,6 +51,54 @@ export default function Documents() {
       console.error('Failed to load documents:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const response = await adminAPI.listUsers();
+      setUsers(response.data);
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    }
+  };
+
+  const loadDocAccess = async (docId: number) => {
+    try {
+      const response = await adminAPI.getDocumentAccess(docId);
+      setDocAccess(response.data.access_list);
+    } catch (err) {
+      console.error('Failed to load access:', err);
+    }
+  };
+
+  const handleShare = async (doc: Document) => {
+    setSharingDoc(doc);
+    await loadDocAccess(doc.id);
+  };
+
+  const handleAddAccess = async (userId: number) => {
+    if (!sharingDoc) return;
+    try {
+      await adminAPI.grantDocumentAccess(sharingDoc.id, {
+        user_id: userId,
+        can_read: true,
+        can_write: false,
+        can_delete: false,
+      });
+      await loadDocAccess(sharingDoc.id);
+    } catch (err) {
+      console.error('Failed to add access:', err);
+    }
+  };
+
+  const handleRemoveAccess = async (userId: number) => {
+    if (!sharingDoc) return;
+    try {
+      await adminAPI.removeDocumentAccess(sharingDoc.id, userId);
+      await loadDocAccess(sharingDoc.id);
+    } catch (err) {
+      console.error('Failed to remove access:', err);
     }
   };
 
@@ -194,11 +260,18 @@ export default function Documents() {
                   <td>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
+                        onClick={() => handleShare(doc)}
+                        className="btn btn-ghost"
+                        style={{ padding: '10px 16px', fontSize: '13px' }}
+                      >
+                        🔗 Share
+                      </button>
+                      <button
                         onClick={() => handleDownload(doc)}
                         className="btn btn-primary"
                         style={{ padding: '10px 16px', fontSize: '13px' }}
                       >
-                        ⬇️ Download
+                        ⬇️
                       </button>
                       <button
                         onClick={() => handleDelete(doc.id)}
@@ -213,6 +286,85 @@ export default function Documents() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {sharingDoc && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: '500px', margin: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0 }}>Share: {sharingDoc.original_filename}</h2>
+              <button onClick={() => setSharingDoc(null)} className="btn btn-ghost">✕</button>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Add user</label>
+              <select
+                className="input"
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleAddAccess(Number(e.target.value));
+                    e.target.value = '';
+                  }
+                }}
+                style={{ width: '100%' }}
+              >
+                <option value="">Select user...</option>
+                {users
+                  .filter(u => u.id !== sharingDoc.owner_id && !docAccess.find(a => a.user_id === u.id))
+                  .map(u => (
+                    <option key={u.id} value={u.id}>{u.username} ({u.email})</option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Users with access</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                {docAccess.map((access) => (
+                  <div
+                    key={access.user_id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px',
+                      background: 'var(--bg-secondary)',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{access.username}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{access.email}</div>
+                    </div>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => handleRemoveAccess(access.user_id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                {docAccess.length === 0 && (
+                  <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>
+                    No users have access yet
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
