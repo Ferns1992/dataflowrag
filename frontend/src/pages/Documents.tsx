@@ -70,10 +70,10 @@ export default function Documents() {
 
   const handleDownload = async (doc: Document) => {
     try {
-      await documentsAPI.download(doc.id);
-    } catch (err) {
+      await documentsAPI.download(doc.id, doc.original_filename);
+    } catch (err: any) {
       console.error('Download failed:', err);
-      alert('Download failed');
+      alert(err.message || 'Download failed');
     }
   };
 

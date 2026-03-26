@@ -34,26 +34,33 @@ export const documentsAPI = {
     api.post('/documents/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  download: async (id: number) => {
+  download: async (id: number, filename: string = 'document') => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/documents/${id}/download`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      credentials: 'include',
-    });
-    if (!response.ok) {
-      throw new Error('Download failed');
+    try {
+      const response = await fetch(`${API_URL}/documents/${id}/download`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Download failed');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error: any) {
+      throw new Error(error.message || 'Download failed');
     }
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'document';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
   },
   delete: (id: number) => api.delete(`/documents/${id}`),
   rerunOcr: (id: number) => api.post(`/documents/${id}/rerun-ocr`),
