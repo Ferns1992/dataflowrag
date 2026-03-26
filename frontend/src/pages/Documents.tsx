@@ -68,14 +68,12 @@ export default function Documents() {
     }
   };
 
-  const handleIngest = async (id: number) => {
+  const handleDownload = async (doc: Document) => {
     try {
-      await documentsAPI.ingest(id);
-      alert('Document indexed successfully');
-      loadDocuments();
+      await documentsAPI.download(doc.id);
     } catch (err) {
-      console.error('Ingest failed:', err);
-      alert('Ingest failed');
+      console.error('Download failed:', err);
+      alert('Download failed');
     }
   };
 
@@ -148,7 +146,7 @@ export default function Documents() {
                   </td>
                   <td>
                     <span className={`badge ${doc.ocr_completed ? 'badge-success' : 'badge-warning'}`}>
-                      {doc.ocr_completed ? '✓ OCR Done' : '○ Processing'}
+                      {doc.ocr_completed ? '✓ Ready' : '○ Processing'}
                     </span>
                     {doc.vectorized && (
                       <span className="badge badge-success" style={{ marginLeft: '5px' }}>
@@ -158,22 +156,13 @@ export default function Documents() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <a
-                        href={documentsAPI.download(doc.id)}
+                      <button
+                        onClick={() => handleDownload(doc)}
                         className="btn btn-primary"
                         style={{ padding: '8px 16px', fontSize: '13px' }}
                       >
                         Download
-                      </a>
-                      {!doc.vectorized && doc.ocr_completed && (
-                        <button
-                          onClick={() => handleIngest(doc.id)}
-                          className="btn btn-primary"
-                          style={{ padding: '8px 16px', fontSize: '13px' }}
-                        >
-                          Index
-                        </button>
-                      )}
+                      </button>
                       <button
                         onClick={() => handleDelete(doc.id)}
                         className="btn btn-danger"

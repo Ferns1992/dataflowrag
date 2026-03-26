@@ -34,7 +34,28 @@ export const documentsAPI = {
     api.post('/documents/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  download: (id: number) => `${API_URL}/documents/${id}/download`,
+  download: async (id: number) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/documents/${id}/download`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error('Download failed');
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const doc = documentsAPI.get(id);
+    doc.then(res => {
+      a.download = res.data.original_filename;
+      a.click();
+    }).catch(() => {
+      a.download = 'document';
+      a.click();
+    });
+    window.URL.revokeObjectURL(url);
+  },
   delete: (id: number) => api.delete(`/documents/${id}`),
   rerunOcr: (id: number) => api.post(`/documents/${id}/rerun-ocr`),
   ingest: (id: number) => api.post(`/rag/ingest/${id}`),
