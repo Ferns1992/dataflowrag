@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { documentsAPI, adminAPI, authAPI } from '../services/api';
+import { documentsAPI, adminAPI } from '../services/api';
 
 interface Document {
   id: number;

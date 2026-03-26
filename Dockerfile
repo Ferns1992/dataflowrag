@@ -1,11 +1,3 @@
-FROM node:20-slim AS frontend-builder
-
-WORKDIR /build
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
-
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -16,14 +8,17 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=frontend-builder /build/dist ./static/
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
 COPY backend/app/ ./app/
 
 RUN mkdir -p /app/uploads /app/static
+
+COPY frontend/dist ./static/
+
 RUN if [ ! -f /app/static/index.html ]; then \
-    echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><h1>Error: Frontend not built</h1></body></html>' > /app/static/index.html; \
+    echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><h1>Error: Frontend not built. Run: cd frontend && npm install && npm run build</h1></body></html>' > /app/static/index.html; \
     fi
 
 EXPOSE 4000
