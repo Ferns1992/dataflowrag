@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { authAPI } from '../services/api';
 
-interface LoginProps {
-  onLogin: (token: string, user: any) => void;
-}
-
-export default function Login({ onLogin }: LoginProps) {
+export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,7 +17,7 @@ export default function Login({ onLogin }: LoginProps) {
       const { access_token, user } = response.data;
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
-      onLogin(access_token, user);
+      window.location.href = '/';
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed');
     } finally {
@@ -30,33 +26,18 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      minHeight: '100vh',
-      padding: '20px'
-    }}>
-      <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h1 style={{ 
-            fontSize: '28px', 
-            fontWeight: 700,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            marginBottom: '10px'
-          }}>
-            DataFlowRAG
-          </h1>
-          <p style={{ color: '#666' }}>Sign in to your account</p>
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-logo">
+          <h1>DataFlowRAG</h1>
+          <p>Sign in to manage your documents</p>
         </div>
         
         {error && <div className="error">{error}</div>}
         
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#333' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600 }}>
               Username
             </label>
             <input
@@ -69,8 +50,8 @@ export default function Login({ onLogin }: LoginProps) {
             />
           </div>
           
-          <div style={{ marginBottom: '30px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#333' }}>
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600 }}>
               Password
             </label>
             <input
@@ -86,15 +67,19 @@ export default function Login({ onLogin }: LoginProps) {
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '14px' }}
+            style={{ width: '100%', padding: '16px', fontSize: '16px' }}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? (
+              <span className="pulse">Signing in...</span>
+            ) : (
+              'Sign In →'
+            )}
           </button>
         </form>
         
-        <p style={{ marginTop: '20px', textAlign: 'center', color: '#666' }}>
-          Don't have an account? <a href="/register" style={{ color: '#667eea', fontWeight: 500 }}>Register</a>
+        <p style={{ marginTop: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Don't have an account? <a href="/register" style={{ color: 'var(--accent)', fontWeight: 600 }}>Create one</a>
         </p>
       </div>
     </div>

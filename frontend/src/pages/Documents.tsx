@@ -18,6 +18,7 @@ export default function Documents() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,8 +36,7 @@ export default function Documents() {
     }
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
     setUploading(true);
@@ -57,8 +57,14 @@ export default function Documents() {
     }
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleUpload(e.dataTransfer.files);
+  };
+
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    if (!confirm('Delete this document?')) return;
     try {
       await documentsAPI.delete(id);
       setDocuments(documents.filter(d => d.id !== id));
@@ -89,37 +95,59 @@ export default function Documents() {
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <h1>Documents</h1>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <input
             type="text"
             className="input"
             placeholder="Search documents..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '250px' }}
+            style={{ width: '260px' }}
           />
-          <label className="btn btn-primary" style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <button 
+            className="btn btn-primary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
             {uploading ? 'Uploading...' : '+ Upload'}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleUpload}
-              style={{ display: 'none' }}
-              disabled={uploading}
-            />
-          </label>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={(e) => handleUpload(e.target.files)}
+            style={{ display: 'none' }}
+          />
         </div>
       </div>
 
+      <div 
+        className="upload-zone"
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        style={{ 
+          borderColor: dragOver ? 'var(--accent)' : undefined,
+          background: dragOver ? 'rgba(102, 126, 234, 0.1)' : undefined
+        }}
+      >
+        <div className="upload-zone-icon floating">📁</div>
+        <p style={{ fontSize: '18px', fontWeight: 600 }}>Drop files here or click to upload</p>
+        <p>Supports PDF, Images, Word, Excel, PowerPoint, and more</p>
+      </div>
+
       {loading ? (
-        <div className="loading">Loading documents...</div>
+        <div className="loading">
+          <span className="pulse">Loading documents...</span>
+        </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="card">
-          <p style={{ textAlign: 'center', color: '#666' }}>
-            No documents found. Upload your first document!
+        <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
+          <div style={{ fontSize: '64px', marginBottom: '16px' }}>📭</div>
+          <p style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>
+            No documents yet. Upload your first file!
           </p>
         </div>
       ) : (
@@ -127,9 +155,8 @@ export default function Documents() {
           <table>
             <thead>
               <tr>
-                <th>Filename</th>
+                <th>File</th>
                 <th>Size</th>
-                <th>Type</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -137,19 +164,29 @@ export default function Documents() {
             <tbody>
               {filteredDocs.map((doc) => (
                 <tr key={doc.id}>
-                  <td style={{ fontWeight: 500 }}>{doc.original_filename}</td>
-                  <td>{formatFileSize(doc.file_size)}</td>
                   <td>
-                    <span className="badge" style={{ background: '#667eea20', color: '#667eea' }}>
-                      {doc.file_extension}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>
+                        {doc.file_extension.includes('pdf') ? '📕' :
+                         doc.file_extension.includes('doc') ? '📘' :
+                         doc.file_extension.includes('xls') ? '📗' :
+                         doc.file_extension.includes('img') ? '🖼️' : '📄'}
+                      </span>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{doc.original_filename}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {doc.file_extension} • {new Date(doc.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
                   </td>
+                  <td>{formatFileSize(doc.file_size)}</td>
                   <td>
                     <span className={`badge ${doc.ocr_completed ? 'badge-success' : 'badge-warning'}`}>
                       {doc.ocr_completed ? '✓ Ready' : '○ Processing'}
                     </span>
                     {doc.vectorized && (
-                      <span className="badge badge-success" style={{ marginLeft: '5px' }}>
+                      <span className="badge badge-purple" style={{ marginLeft: '8px' }}>
                         ✓ Indexed
                       </span>
                     )}
@@ -159,16 +196,16 @@ export default function Documents() {
                       <button
                         onClick={() => handleDownload(doc)}
                         className="btn btn-primary"
-                        style={{ padding: '8px 16px', fontSize: '13px' }}
+                        style={{ padding: '10px 16px', fontSize: '13px' }}
                       >
-                        Download
+                        ⬇️ Download
                       </button>
                       <button
                         onClick={() => handleDelete(doc.id)}
                         className="btn btn-danger"
-                        style={{ padding: '8px 16px', fontSize: '13px' }}
+                        style={{ padding: '10px 16px', fontSize: '13px' }}
                       >
-                        Delete
+                        🗑️
                       </button>
                     </div>
                   </td>

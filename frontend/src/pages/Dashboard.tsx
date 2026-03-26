@@ -8,7 +8,13 @@ interface User {
   role: string;
 }
 
-export default function Dashboard({ user }: { user: User }) {
+interface DashboardProps {
+  user: User;
+  onThemeToggle?: () => void;
+  theme?: string;
+}
+
+export default function Dashboard({ user }: DashboardProps) {
   const [stats, setStats] = useState({ total: 0, processed: 0, vectorized: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -34,18 +40,21 @@ export default function Dashboard({ user }: { user: User }) {
 
   return (
     <div className="container">
-      <h1>Welcome, {user.username}!</h1>
+      <h1>Welcome back, {user.username}!</h1>
       
       <div className="stats-grid">
         <div className="stat-card">
+          <div className="stat-icon">📄</div>
           <h3>Total Documents</h3>
           <p>{loading ? '...' : stats.total}</p>
         </div>
         <div className="stat-card">
+          <div className="stat-icon">✅</div>
           <h3>OCR Processed</h3>
           <p>{loading ? '...' : stats.processed}</p>
         </div>
         <div className="stat-card">
+          <div className="stat-icon">🔍</div>
           <h3>Indexed</h3>
           <p>{loading ? '...' : stats.vectorized}</p>
         </div>
@@ -53,17 +62,23 @@ export default function Dashboard({ user }: { user: User }) {
 
       <div className="card">
         <h2>Quick Actions</h2>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-          <a href="/documents" className="btn btn-primary">Upload Documents</a>
-          <a href="/rag" className="btn btn-primary">Search Documents</a>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+          <a href="/documents" className="btn btn-primary">
+            📤 Upload Documents
+          </a>
+          <a href="/rag" className="btn btn-primary">
+            🔍 Search Documents
+          </a>
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h2>Account Information</h2>
-        <p><strong>Username:</strong> {user.username}</p>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Role:</strong> <span className="badge badge-success">{user.role}</span></p>
+      <div className="card" style={{ marginTop: '24px' }}>
+        <h2>Account Info</h2>
+        <div style={{ display: 'grid', gap: '12px' }}>
+          <p><strong>Username:</strong> {user.username}</p>
+          <p><strong>Email:</strong> {user.email || 'Not set'}</p>
+          <p><strong>Role:</strong> <span className="badge badge-purple">{user.role}</span></p>
+        </div>
       </div>
     </div>
   );

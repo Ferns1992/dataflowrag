@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -20,10 +20,17 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const handleLogin = (token: string, userData: User) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
   const handleLogout = () => {
@@ -41,16 +48,19 @@ function App() {
             <div className="nav-links">
               <a href="/" className="nav-link">Dashboard</a>
               <a href="/documents" className="nav-link">Documents</a>
-              <a href="/rag" className="nav-link">RAG Search</a>
+              <a href="/rag" className="nav-link">Search</a>
               {user.role === 'admin' && <a href="/admin" className="nav-link">Admin</a>}
-              <button onClick={handleLogout} className="btn btn-primary" style={{marginLeft: '20px'}}>Logout</button>
+              <button onClick={toggleTheme} className="theme-toggle" title="Toggle Theme">
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </button>
+              <button onClick={handleLogout} className="btn btn-ghost" style={{marginLeft: '10px'}}>Logout</button>
             </div>
           </nav>
         )}
         <Routes>
-          <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
+          <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
           <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
-          <Route path="/" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
+          <Route path="/" element={user ? <Dashboard user={user} onThemeToggle={toggleTheme} theme={theme} /> : <Navigate to="/login" />} />
           <Route path="/documents" element={user ? <Documents /> : <Navigate to="/login" />} />
           <Route path="/rag" element={user ? <RagSearch /> : <Navigate to="/login" />} />
           <Route path="/admin" element={user && user.role === 'admin' ? <Admin /> : <Navigate to="/" />} />

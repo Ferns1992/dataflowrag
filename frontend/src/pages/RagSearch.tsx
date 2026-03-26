@@ -6,7 +6,6 @@ export default function RagSearch() {
   const [results, setResults] = useState<any[]>([]);
   const [answer, setAnswer] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<'search' | 'ask'>('search');
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -14,10 +13,9 @@ export default function RagSearch() {
     setAnswer(null);
     try {
       const response = await ragAPI.search(query);
-      setResults(response.data.results);
+      setResults(response.data.results || []);
     } catch (err) {
       console.error('Search failed:', err);
-      alert('Search failed');
     } finally {
       setLoading(false);
     }
@@ -32,7 +30,6 @@ export default function RagSearch() {
       setAnswer(response.data);
     } catch (err) {
       console.error('Ask failed:', err);
-      alert('Failed to get answer');
     } finally {
       setLoading(false);
     }
@@ -40,65 +37,64 @@ export default function RagSearch() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'search') {
-      handleSearch();
-    } else {
-      handleAsk();
-    }
+    handleSearch();
   };
 
   return (
     <div className="container">
-      <h1 style={{ marginBottom: '20px' }}>RAG Search</h1>
+      <h1>🔍 Search Documents</h1>
 
       <div className="card">
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <button
-            onClick={() => setMode('search')}
-            className={`btn ${mode === 'search' ? 'btn-primary' : ''}`}
-            style={{ background: mode === 'search' ? '#007bff' : '#e9ecef' }}
-          >
-            Semantic Search
-          </button>
-          <button
-            onClick={() => setMode('ask')}
-            className={`btn ${mode === 'ask' ? 'btn-primary' : ''}`}
-            style={{ background: mode === 'ask' ? '#007bff' : '#e9ecef' }}
-          >
-            Ask Questions
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="search-bar">
             <input
               type="text"
               className="input"
-              placeholder={mode === 'search' ? 'Search documents...' : 'Ask a question about your documents...'}
+              placeholder="Search for anything in your documents..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              style={{ flex: 1 }}
             />
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Processing...' : mode === 'search' ? 'Search' : 'Ask'}
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="submit" className="btn btn-primary" disabled={loading} style={{ flex: 1 }}>
+              {loading ? <span className="pulse">Searching...</span> : '🔍 Search'}
+            </button>
+            <button type="button" onClick={handleAsk} className="btn btn-ghost" disabled={loading}>
+              Ask Question
             </button>
           </div>
         </form>
       </div>
 
-      {loading && <div className="loading">Processing...</div>}
+      {loading && (
+        <div className="loading">
+          <span className="pulse">Searching documents...</span>
+        </div>
+      )}
 
       {answer && (
         <div className="card">
-          <h2 style={{ marginBottom: '15px' }}>Answer</h2>
-          <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{answer.answer}</div>
+          <h2>📝 Answer</h2>
+          <div style={{ 
+            whiteSpace: 'pre-wrap', 
+            lineHeight: '1.8',
+            padding: '20px',
+            background: 'var(--bg-primary)',
+            borderRadius: '12px',
+            marginTop: '16px'
+          }}>
+            {answer.answer}
+          </div>
           
-          {answer.sources && answer.sources.length > 0 && (
-            <div style={{ marginTop: '20px' }}>
-              <h3 style={{ marginBottom: '10px' }}>Sources</h3>
+          {answer.sources?.length > 0 && (
+            <div style={{ marginTop: '24px' }}>
+              <h3>📚 Sources</h3>
               {answer.sources.map((source: any, i: number) => (
-                <div key={i} style={{ padding: '10px', background: '#f8f9fa', borderRadius: '4px', marginBottom: '5px' }}>
-                  <strong>{source.document_name}</strong> (Score: {(source.score * 100).toFixed(1)}%)
+                <div key={i} className="card" style={{ padding: '16px', marginTop: '12px' }}>
+                  <strong>{source.document_name}</strong>
+                  <span style={{ marginLeft: '12px', color: 'var(--text-secondary)' }}>
+                    Score: {(source.score * 100).toFixed(0)}%
+                  </span>
                 </div>
               ))}
             </div>
@@ -108,16 +104,29 @@ export default function RagSearch() {
 
       {results.length > 0 && (
         <div className="card">
-          <h2 style={{ marginBottom: '15px' }}>Search Results</h2>
+          <h2>📋 Results ({results.length})</h2>
           {results.map((result, i) => (
-            <div key={i} style={{ padding: '15px', borderBottom: '1px solid #ddd' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <strong>{result.document_name}</strong>
-                <span style={{ color: '#666' }}>Score: {(result.score * 100).toFixed(1)}%</span>
+            <div key={i} className="card" style={{ padding: '20px', marginTop: i > 0 ? '12px' : 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <strong style={{ fontSize: '16px' }}>{result.document_name}</strong>
+                <span className="badge badge-success">
+                  {(result.score * 100).toFixed(0)}% match
+                </span>
               </div>
-              <p style={{ color: '#444' }}>{result.content}...</p>
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                {result.content}...
+              </p>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && results.length === 0 && !answer && (
+        <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
+          <div style={{ fontSize: '64px', marginBottom: '16px' }}>💡</div>
+          <p style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>
+            Search your documents to find relevant content
+          </p>
         </div>
       )}
     </div>
