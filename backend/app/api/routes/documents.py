@@ -3,14 +3,12 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
-from app.core.security import get_current_active_user, require_role
-from app.models.user import User, UserRole
-from app.models.document import Document, DocumentAccess, Folder
+from app.core.security import get_current_active_user
+from app.models.user import User
+from app.models.document import Document, DocumentAccess
 from app.schemas.document import (
     DocumentResponse,
     DocumentListResponse,
-    FolderCreate,
-    FolderResponse,
     DocumentAccessCreate,
     DocumentAccessResponse,
 )
@@ -26,6 +24,8 @@ import os
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
+MAX_FILE_SIZE = 50 * 1024 * 1024
+
 
 @router.post(
     "/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED
@@ -34,7 +34,7 @@ async def upload_document(
     file: UploadFile = File(...),
     folder_id: Optional[int] = Form(None),
     is_public: bool = Form(False),
-    run_ocr: bool = Form(True),
+    run_ocr: bool = Form(False),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -44,6 +44,11 @@ async def upload_document(
     if not is_allowed_file(file.filename):
         raise HTTPException(status_code=400, detail="File type not allowed")
 
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 50MB)")
+
+    file.file.seek(0)
     file_path, original_filename, file_size = await save_upload_file(
         file, current_user.id
     )
@@ -60,34 +65,20 @@ async def upload_document(
         folder_id=folder_id,
         owner_id=current_user.id,
         is_public=is_public,
+        vectorized=True,
     )
 
-    try:
-        if run_ocr and (
-            is_image_file(original_filename)
-            or is_pdf_file(original_filename)
-            or file_extension
-            in {
-                ".txt",
-                ".doc",
-                ".docx",
-                ".xls",
-                ".xlsx",
-                ".ppt",
-                ".pptx",
-                ".csv",
-                ".json",
-            }
-        ):
+    if run_ocr and (
+        is_image_file(original_filename)
+        or is_pdf_file(original_filename)
+        or file_extension in {".txt", ".doc", ".docx", ".csv"}
+    ):
+        try:
             extracted_text = extract_text_from_file(file_path, file_extension)
             document.extracted_text = extracted_text
             document.ocr_completed = True
-            document.vectorized = True
-        else:
-            document.vectorized = True
-    except Exception as e:
-        print(f"OCR error: {e}")
-        document.vectorized = True
+        except Exception as e:
+            print(f"OCR error: {e}")
 
     db.add(document)
     db.commit()
@@ -133,17 +124,7 @@ async def get_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     if document.owner_id != current_user.id and not document.is_public:
-        access = (
-            db.query(DocumentAccess)
-            .filter(
-                DocumentAccess.document_id == document_id,
-                DocumentAccess.user_id == current_user.id,
-            )
-            .first()
-        )
-
-        if not access or not access.can_read:
-            raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Access denied")
 
     return document
 
@@ -183,7 +164,7 @@ async def delete_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if document.owner_id != current_user.id and current_user.role != UserRole.ADMIN:
+    if document.owner_id != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not authorized to delete this document"
         )
@@ -207,8 +188,8 @@ async def grant_access(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if document.owner_id != current_user.id and current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Not authorized to manage access")
+    if document.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     existing_access = (
         db.query(DocumentAccess)
@@ -251,7 +232,7 @@ async def rerun_ocr(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if document.owner_id != current_user.id and current_user.role != UserRole.ADMIN:
+    if document.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     try:
