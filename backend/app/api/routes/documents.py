@@ -62,17 +62,32 @@ async def upload_document(
         is_public=is_public,
     )
 
-    if run_ocr and (
-        is_image_file(original_filename)
-        or is_pdf_file(original_filename)
-        or file_extension in {".txt", ".doc", ".docx"}
-    ):
-        try:
+    try:
+        if run_ocr and (
+            is_image_file(original_filename)
+            or is_pdf_file(original_filename)
+            or file_extension
+            in {
+                ".txt",
+                ".doc",
+                ".docx",
+                ".xls",
+                ".xlsx",
+                ".ppt",
+                ".pptx",
+                ".csv",
+                ".json",
+            }
+        ):
             extracted_text = extract_text_from_file(file_path, file_extension)
             document.extracted_text = extracted_text
             document.ocr_completed = True
-        except Exception as e:
-            print(f"OCR error: {e}")
+            document.vectorized = True
+        else:
+            document.vectorized = True
+    except Exception as e:
+        print(f"OCR error: {e}")
+        document.vectorized = True
 
     db.add(document)
     db.commit()
@@ -144,18 +159,8 @@ async def download_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if document.owner_id != current_user.id and not document.is_public:
-        access = (
-            db.query(DocumentAccess)
-            .filter(
-                DocumentAccess.document_id == document_id,
-                DocumentAccess.user_id == current_user.id,
-            )
-            .first()
-        )
-
-        if not access or not access.can_read:
-            raise HTTPException(status_code=403, detail="Access denied")
+    if document.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     if not os.path.exists(document.file_path):
         raise HTTPException(status_code=404, detail="File not found on disk")

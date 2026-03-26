@@ -1,85 +1,83 @@
 # DataFlowRAG
 
-Document Management System with RAG, OCR, and User Management
+Modern Document Management System with OCR and Search
 
 ## Features
 
 - **User Management**: JWT authentication with role-based access (admin, editor, viewer)
 - **Document Management**: Upload, download, and organize documents
-- **OCR Processing**: Extract text from images, PDFs, and scanned documents
-- **RAG Pipeline**: Semantic search and AI-powered Q&A on your documents
-- **Docker Deployable**: Ready for VPS deployment
+- **OCR Processing**: Automatic text extraction from images, PDFs, and scanned documents
+- **Full-Text Search**: Search through all your document content
+- **Modern UI**: Dark/Light mode with glass-morphism design
+- **Docker Deployable**: Ready for VPS deployment with Portainer
 
 ## Quick Start
 
-### Prerequisites
+### Deployment with Portainer
 
-- Docker & Docker Compose
-- OpenAI API Key (optional for RAG features)
+1. Go to **Stacks** → **Add stack**
+2. Select **Git repository**
+3. Repository URL: `https://github.com/Ferns1992/dataflowrag.git`
+4. Click **Deploy stack**
 
-### Deployment
+### Manual Deployment
 
-1. Build the frontend:
-   ```bash
-   # Windows
-   build.bat
-   
-   # Linux/Mac
-   ./build.sh
-   ```
+```bash
+git clone https://github.com/Ferns1992/dataflowrag.git
+cd dataflowrag
+docker-compose up -d
+```
 
-2. Start the application:
-   ```bash
-   docker-compose up -d
-   ```
+### Access
 
-3. Access at **http://localhost:4030**
+- **App**: http://your-vps-ip:4030
+- **API Docs**: http://your-vps-ip:4030/docs
 
 ### Default Login
-- **Username**: admin
-- **Password**: admin
+- **Username**: `admin`
+- **Password**: `admin`
 
-## API Documentation
+## Features
 
-- **API Docs**: http://localhost:4030/docs
+### Document Upload
+- Drag & drop support
+- Auto OCR processing
+- Supports: PDF, Images, Word, Excel, PowerPoint, CSV, TXT
+
+### Search
+- Full-text search across all documents
+- Filter by filename
+- Results show document content snippets
+
+### Modern UI
+- Dark/Light theme toggle
+- Glass-morphism cards
+- Smooth animations
+- Responsive design
 
 ## Supported File Types
 
-- Images: PNG, JPG, JPEG, GIF, BMP, TIFF
-- Documents: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
-- Text: TXT, MD, CSV, JSON, XML, HTML, RTF
-
-## Architecture
-
-```
-Frontend (React) ←→ Backend (FastAPI) ←→ PostgreSQL
-                        ↓
-                   OCR Engine + RAG Pipeline
-```
+| Type | Extensions |
+|------|------------|
+| Images | PNG, JPG, JPEG, GIF, BMP, TIFF |
+| Documents | PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX |
+| Text | TXT, MD, CSV, JSON, XML, HTML, RTF |
 
 ## Tech Stack
 
 - **Backend**: FastAPI, SQLAlchemy, PostgreSQL
 - **Frontend**: React, Vite, TypeScript
 - **OCR**: Tesseract
-- **RAG**: OpenAI Embeddings + GPT
 - **Auth**: JWT with bcrypt
+- **Container**: Docker, Portainer
 
-## Development
+## Environment Variables
 
-### Backend (Local)
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-### Frontend (Local)
-```bash
-cd frontend
-npm install
-npm run dev
-```
+| Variable | Default | Description |
+|-----------|---------|-------------|
+| `POSTGRES_PASSWORD` | `postgres` | Database password |
+| `SECRET_KEY` | - | JWT secret key (change in production) |
+| `OPENAI_API_KEY` | - | Optional for AI features |
 
 ## License
 
