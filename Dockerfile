@@ -1,3 +1,11 @@
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /build
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -6,26 +14,17 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
     poppler-utils \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g npm
-
+COPY --from=frontend-builder /build/dist ./static/
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
 COPY backend/app/ ./app/
 
 RUN mkdir -p /app/uploads /app/static
-
-COPY frontend/package*.json ./frontend/
-WORKDIR /app/frontend
-RUN npm install && npm run build
-WORKDIR /app
-
-COPY frontend/dist ./app/static/
+RUN if [ ! -f /app/static/index.html ]; then \
+    echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><h1>Error: Frontend not built</h1></body></html>' > /app/static/index.html; \
+    fi
 
 EXPOSE 4000
 
