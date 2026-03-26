@@ -38,22 +38,21 @@ export const documentsAPI = {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/documents/${id}/download`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include',
     });
-    if (!response.ok) throw new Error('Download failed');
+    if (!response.ok) {
+      throw new Error('Download failed');
+    }
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const doc = documentsAPI.get(id);
-    doc.then(res => {
-      a.download = res.data.original_filename;
-      a.click();
-    }).catch(() => {
-      a.download = 'document';
-      a.click();
-    });
+    a.download = 'document';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   },
   delete: (id: number) => api.delete(`/documents/${id}`),
