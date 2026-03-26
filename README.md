@@ -1,13 +1,15 @@
 # DataFlowRAG
 
-Modern Document Management System with OCR and Search
+Modern Document Management System with OCR, Search, and User Access Control
 
 ## Features
 
 - **User Management**: JWT authentication with role-based access (admin, editor, viewer)
 - **Document Management**: Upload, download, and organize documents
+- **Document Sharing**: Share documents with specific users or make public
 - **OCR Processing**: Automatic text extraction from images, PDFs, and scanned documents
 - **Full-Text Search**: Search through all your document content
+- **Admin Panel**: Manage users and document access permissions
 - **Modern UI**: Dark/Light mode with glass-morphism design
 - **Docker Deployable**: Ready for VPS deployment with Portainer
 
@@ -41,13 +43,26 @@ docker-compose up -d
 
 ### Document Upload
 - Drag & drop support
-- Auto OCR processing
+- Optional OCR processing (disabled by default to save CPU)
 - Supports: PDF, Images, Word, Excel, PowerPoint, CSV, TXT
+- File size limit: 50MB
+
+### Document Sharing
+- **Share button** on each document to grant access to specific users
+- Make documents public to share with everyone
+- Remove access anytime
+- Admin can manage access from Admin panel
 
 ### Search
-- Full-text search across all documents
+- Full-text search across all documents and their content
 - Filter by filename
 - Results show document content snippets
+
+### Admin Panel
+- **User Management**: Create, edit, delete users
+- **Document Access**: Manage which users can access which documents
+- Toggle user active/inactive status
+- Change user roles (viewer, editor, admin)
 
 ### Modern UI
 - Dark/Light theme toggle
@@ -74,10 +89,9 @@ docker-compose up -d
 ## Environment Variables
 
 | Variable | Default | Description |
-|-----------|---------|-------------|
-| `POSTGRES_PASSWORD` | `postgres` | Database password |
+|----------|---------|-------------|
+| `DB_PASSWORD` | `postgres` | Database password |
 | `SECRET_KEY` | - | JWT secret key (change in production) |
-| `OPENAI_API_KEY` | - | Optional for AI features |
 
 ## License
 
