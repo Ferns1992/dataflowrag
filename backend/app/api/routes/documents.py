@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
 from app.core.security import get_current_active_user
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.document import Document, DocumentAccess
 from app.schemas.document import (
     DocumentResponse,
@@ -96,8 +96,17 @@ async def list_documents(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
+    accessible_doc_ids = [
+        acc.document_id
+        for acc in db.query(DocumentAccess)
+        .filter(DocumentAccess.user_id == current_user.id)
+        .all()
+    ]
+
     query = db.query(Document).filter(
-        (Document.owner_id == current_user.id) | (Document.is_public == True)
+        (Document.owner_id == current_user.id)
+        | (Document.is_public == True)
+        | (Document.id.in_(accessible_doc_ids))
     )
 
     if folder_id is not None:
@@ -124,7 +133,17 @@ async def get_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     if document.owner_id != current_user.id and not document.is_public:
-        raise HTTPException(status_code=403, detail="Access denied")
+        access = (
+            db.query(DocumentAccess)
+            .filter(
+                DocumentAccess.document_id == document_id,
+                DocumentAccess.user_id == current_user.id,
+            )
+            .first()
+        )
+        if not access or not access.can_read:
+            if current_user.role.value != "admin":
+                raise HTTPException(status_code=403, detail="Access denied")
 
     return document
 

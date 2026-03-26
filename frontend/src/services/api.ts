@@ -71,6 +71,14 @@ export const adminAPI = {
   toggleActive: (userId: number, isActive: boolean) =>
     api.put(`/admin/users/${userId}/role`, { is_active: isActive }),
   deleteUser: (userId: number) => api.delete(`/admin/users/${userId}`),
+  listDocuments: () => api.get('/admin/documents'),
+  getDocumentAccess: (docId: number) => api.get(`/admin/documents/${docId}/access`),
+  grantDocumentAccess: (docId: number, data: { user_id: number; can_read: boolean; can_write: boolean; can_delete: boolean }) =>
+    api.post(`/admin/documents/${docId}/access`, data),
+  removeDocumentAccess: (docId: number, userId: number) =>
+    api.delete(`/admin/documents/${docId}/access/${userId}`),
+  toggleDocumentPublic: (docId: number, isPublic: boolean) =>
+    api.put(`/admin/documents/${docId}/public`, isPublic, { headers: { 'Content-Type': 'application/json' } }),
 };
 
 export default api;

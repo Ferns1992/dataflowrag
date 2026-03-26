@@ -45,10 +45,21 @@ async def search_documents(
     db: Session = Depends(get_db),
 ):
     try:
+        from app.models.document import DocumentAccess
+
+        accessible_ids = [
+            acc.document_id
+            for acc in db.query(DocumentAccess)
+            .filter(DocumentAccess.user_id == current_user.id)
+            .all()
+        ]
+
         documents = (
             db.query(Document)
             .filter(
-                (Document.owner_id == current_user.id) | (Document.is_public == True)
+                (Document.owner_id == current_user.id)
+                | (Document.is_public == True)
+                | (Document.id.in_(accessible_ids))
             )
             .filter(
                 Document.original_filename.ilike(f"%{query}%")
@@ -86,27 +97,29 @@ async def ask_question(
             .filter(
                 (Document.owner_id == current_user.id) | (Document.is_public == True)
             )
-            .filter(Document.extracted_text.isnot(None))
+            .filter(
+                Document.extracted_text.isnot(None),
+                Document.extracted_text.ilike(f"%{query}%"),
+            )
+            .limit(top_k)
             .all()
         )
 
-        results = []
-        for doc in documents:
-            if doc.extracted_text and query.lower() in doc.extracted_text.lower():
-                results.append(
-                    {
-                        "document_id": doc.id,
-                        "document_name": doc.original_filename,
-                        "content": doc.extracted_text[:500],
-                        "score": 1.0,
-                    }
-                )
+        results = [
+            {
+                "document_id": doc.id,
+                "document_name": doc.original_filename,
+                "content": doc.extracted_text[:500] if doc.extracted_text else "",
+                "score": 1.0,
+            }
+            for doc in documents
+        ]
 
         if not results:
             return {"answer": "No documents found matching your query.", "sources": []}
 
         context = "\n\n".join(
-            [f"[{r['document_name']}]: {r['content']}" for r in results[:top_k]]
+            [f"[{r['document_name']}]: {r['content']}" for r in results]
         )
 
         return {
@@ -117,7 +130,7 @@ async def ask_question(
                     "document_name": r["document_name"],
                     "score": r["score"],
                 }
-                for r in results[:top_k]
+                for r in results
             ],
         }
     except Exception as e:
