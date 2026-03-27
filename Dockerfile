@@ -23,4 +23,4 @@ RUN if [ ! -f /app/static/index.html ]; then \
 
 EXPOSE 4000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000", "--workers", "1", "--limit-concurrency", "10", "--limit-max-requests", "100"]
