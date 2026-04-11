@@ -63,6 +63,7 @@ docker-compose up -d
 ### Admin Panel
 - **User Management**: Create, edit, delete users
 - **Document Access**: Manage which users can access which documents
+- **Database Backup**: Export/Import database for disaster recovery
 - Toggle user active/inactive status
 - Change user roles (viewer, editor, admin)
 
@@ -113,6 +114,19 @@ Total: ~768MB RAM maximum
 - **Query timeouts** (30 second limit)
 - **Connection pooling** optimized for low memory
 - **Automatic worker restart** to prevent memory leaks
+
+## Backup & Restore
+
+Admin can backup and restore the database from the Admin panel:
+
+1. Go to **Admin** → **Backup** tab
+2. **Export**: Download JSON backup of users, documents metadata, and access permissions
+3. **Import**: Upload backup file to restore data
+
+**Note**: Uploaded document files are NOT included in backup. After server crash:
+1. Deploy fresh container
+2. Import database backup
+3. Re-upload document files
 
 ## License
 
