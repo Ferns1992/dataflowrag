@@ -14,17 +14,35 @@ def extract_text_from_image(image_path: str, language: str = "eng") -> str:
 
 
 def extract_text_from_pdf(pdf_path: str, language: str = "eng") -> str:
+    text_parts = []
+
+    try:
+        from PyPDF2 import PdfReader
+
+        reader = PdfReader(pdf_path)
+        for i, page in enumerate(reader.pages):
+            try:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(f"--- Page {i + 1} ---\n{page_text}")
+            except Exception:
+                text_parts.append(f"--- Page {i + 1} ---\n[Could not extract text]")
+    except Exception as e:
+        pass
+
+    if text_parts:
+        return "\n\n".join(text_parts)
+
     try:
         from pdf2image import convert_from_path
 
         images = convert_from_path(pdf_path)
-        all_text = []
         for i, image in enumerate(images):
             page_text = pytesseract.image_to_string(image, lang=language)
-            all_text.append(f"--- Page {i + 1} ---\n{page_text}")
-        return "\n\n".join(all_text)
+            text_parts.append(f"--- Page {i + 1} (OCR) ---\n{page_text}")
+        return "\n\n".join(text_parts)
     except Exception as e:
-        return f"PDF OCR Error: {str(e)}"
+        return f"PDF processing unavailable. Install poppler for OCR support. Error: {str(e)}"
 
 
 def extract_text_from_file(

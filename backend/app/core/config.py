@@ -19,18 +19,22 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "dataflowrag")
 
+    USE_SQLITE: bool = os.getenv("USE_SQLITE", "true").lower() == "true"
+
     @property
     def DATABASE_URL(self) -> str:
+        if self.USE_SQLITE:
+            return "sqlite:///./dataflowrag.db"
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
 
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "/app/uploads")
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
     MAX_FILE_SIZE: int = 100 * 1024 * 1024
 
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY", "")
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "mxbai-embed-large")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "llama3.2")
     OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
-    USE_OLLAMA: bool = os.getenv("USE_OLLAMA", "true").lower() == "true"
+    USE_OLLAMA: bool = os.getenv("USE_OLLAMA", "false").lower() == "true"
 
     class Config:
         case_sensitive = True
