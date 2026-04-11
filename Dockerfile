@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn==21.2.0
 
 COPY backend/app/ ./app/
 
-RUN mkdir -p /app/uploads /app/static
+RUN mkdir -p /app/uploads /app/static && chmod 777 /app/uploads /app/static
 
 COPY frontend/dist ./static/
 
@@ -24,5 +24,7 @@ RUN if [ ! -f /app/static/index.html ]; then \
 
 EXPOSE 4000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:4000", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--max-requests", "50", "--max-requests-jitter", "10", "--timeout", "30", "--keep-alive", "5", "app.main:app"]
+RUN chmod -R 777 /app/uploads
+
+CMD ["gunicorn", "--bind", "0.0.0.0:4000", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--max-requests", "50", "--max-requests-jitter", "10", "--timeout", "30", "--keep-alive", "5", "--access-logfile", "-", "--error-logfile", "-", "app.main:app"]
 

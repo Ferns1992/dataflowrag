@@ -1,6 +1,5 @@
 import os
 import uuid
-import aiofiles
 from typing import Optional
 from fastapi import UploadFile
 from app.core.config import settings
@@ -81,15 +80,16 @@ async def save_upload_file(
     os.makedirs(os.path.join(settings.UPLOAD_DIR, str(owner_id)), exist_ok=True)
 
     file_id = str(uuid.uuid4())
-    original_filename = upload_file.filename
+    original_filename = upload_file.filename or "unknown"
     ext = os.path.splitext(original_filename)[1].lower()
     new_filename = f"{file_id}{ext}"
     file_path = os.path.join(settings.UPLOAD_DIR, str(owner_id), new_filename)
 
     file_size = 0
-    async with aiofiles.open(file_path, "wb") as f:
-        while chunk := await upload_file.read(8192):
-            file_size += len(chunk)
-            await f.write(chunk)
+    content = await upload_file.read()
+    file_size = len(content)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
 
     return file_path, original_filename, file_size
