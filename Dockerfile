@@ -16,15 +16,15 @@ COPY backend/app/ ./app/
 
 RUN mkdir -p /app/uploads /app/static && chmod 777 /app/uploads /app/static
 
-COPY frontend/dist ./static/
+COPY frontend/dist/* ./app/static/
 
-RUN if [ ! -f /app/static/index.html ]; then \
-    echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><h1>Error: Frontend not built. Run: cd frontend && npm install && npm run build</h1></body></html>' > /app/static/index.html; \
+RUN if [ ! -f /app/app/static/index.html ]; then \
+    echo '<!DOCTYPE html><html><head><title>DataFlowRAG</title></head><body><h1>Error: Frontend not built. Run: cd frontend && npm install && npm run build</h1></body></html>' > /app/app/static/index.html; \
     fi
 
 EXPOSE 4000
 
-RUN chmod -R 777 /app/uploads
+RUN chmod -R 777 /app/uploads /app/app/static
 
 CMD ["gunicorn", "--bind", "0.0.0.0:4000", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--max-requests", "50", "--max-requests-jitter", "10", "--timeout", "30", "--keep-alive", "5", "--access-logfile", "-", "--error-logfile", "-", "app.main:app"]
 
