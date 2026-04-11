@@ -1,16 +1,17 @@
 import os
 from typing import Optional
 from PIL import Image
-import pytesseract
 
 
 def extract_text_from_image(image_path: str, language: str = "eng") -> str:
     try:
+        import pytesseract
+
         image = Image.open(image_path)
         text = pytesseract.image_to_string(image, lang=language)
         return text.strip()
     except Exception as e:
-        return f"OCR Error: {str(e)}"
+        return f"OCR not available on Windows. Image text extraction requires Tesseract OCR. Error: {str(e)}"
 
 
 def extract_text_from_pdf(pdf_path: str, language: str = "eng") -> str:
@@ -23,26 +24,17 @@ def extract_text_from_pdf(pdf_path: str, language: str = "eng") -> str:
         for i, page in enumerate(reader.pages):
             try:
                 page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(f"--- Page {i + 1} ---\n{page_text}")
+                if page_text and page_text.strip():
+                    text_parts.append(f"--- Page {i + 1} ---\n{page_text.strip()}")
             except Exception:
-                text_parts.append(f"--- Page {i + 1} ---\n[Could not extract text]")
+                pass
     except Exception as e:
-        pass
+        return f"PDF reading failed: {str(e)}"
 
     if text_parts:
         return "\n\n".join(text_parts)
 
-    try:
-        from pdf2image import convert_from_path
-
-        images = convert_from_path(pdf_path)
-        for i, image in enumerate(images):
-            page_text = pytesseract.image_to_string(image, lang=language)
-            text_parts.append(f"--- Page {i + 1} (OCR) ---\n{page_text}")
-        return "\n\n".join(text_parts)
-    except Exception as e:
-        return f"PDF processing unavailable. Install poppler for OCR support. Error: {str(e)}"
+    return "No text content found in PDF. This may be a scanned/image PDF. OCR support requires Tesseract OCR to be installed."
 
 
 def extract_text_from_file(
