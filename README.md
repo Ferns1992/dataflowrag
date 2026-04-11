@@ -1,3 +1,4 @@
+
 # DataFlowRAG
 
 Modern Document Management System with OCR, Search, and User Access Control
@@ -12,6 +13,7 @@ Modern Document Management System with OCR, Search, and User Access Control
 - **Admin Panel**: Manage users and document access permissions
 - **Modern UI**: Dark/Light mode with glass-morphism design
 - **Docker Deployable**: Ready for VPS deployment with Portainer
+- **Optimized Performance**: Low memory usage, stable long-running operation
 
 ## Quick Start
 
@@ -80,7 +82,7 @@ docker-compose up -d
 
 ## Tech Stack
 
-- **Backend**: FastAPI, SQLAlchemy, PostgreSQL
+- **Backend**: FastAPI, SQLAlchemy, PostgreSQL, Gunicorn
 - **Frontend**: React, Vite, TypeScript
 - **OCR**: Tesseract
 - **Auth**: JWT with bcrypt
@@ -92,6 +94,25 @@ docker-compose up -d
 |----------|---------|-------------|
 | `DB_PASSWORD` | `postgres` | Database password |
 | `SECRET_KEY` | - | JWT secret key (change in production) |
+
+## Resource Limits
+
+The application is optimized for low-resource VPS environments:
+
+| Component | CPU Limit | Memory Limit |
+|-----------|-----------|--------------|
+| App | 0.3 CPU | 384MB |
+| Database | - | 384MB |
+
+Total: ~768MB RAM maximum
+
+## Performance Optimizations
+
+- **Gunicorn** with worker recycling (max 50 requests per worker)
+- **Garbage collection** after database operations
+- **Query timeouts** (30 second limit)
+- **Connection pooling** optimized for low memory
+- **Automatic worker restart** to prevent memory leaks
 
 ## License
 
