@@ -1,3 +1,4 @@
+
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -9,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt gunicorn==21.2.0
 
 COPY backend/app/ ./app/
 
@@ -23,4 +24,5 @@ RUN if [ ! -f /app/static/index.html ]; then \
 
 EXPOSE 4000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000", "--workers", "1", "--limit-concurrency", "10", "--limit-max-requests", "100"]
+CMD ["gunicorn", "--bind", "0.0.0.0:4000", "--workers", "1", "--worker-class", "uvicorn.workers.UvicornWorker", "--max-requests", "50", "--max-requests-jitter", "10", "--timeout", "30", "--keep-alive", "5", "app.main:app"]
+

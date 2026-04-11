@@ -8,22 +8,22 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
       - POSTGRES_DB=dataflowrag
-      - POSTGRES_MAX_CONNECTIONS=20
-    command: postgres -c shared_buffers=256MB -c max_connections=20 -c work_mem=16MB -c effective_cache_size=512MB -c maintenance_work_mem=128MB
+    command: postgres -c shared_buffers=128MB -c max_connections=15 -c work_mem=8MB -c effective_cache_size=256MB -c maintenance_work_mem=64MB -c log_min_duration_statement=1000
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
     restart: always
+    stop_grace_period: 10s
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 384M
 
   app:
     build:
@@ -45,11 +45,12 @@ services:
       db:
         condition: service_healthy
     restart: always
+    stop_grace_period: 10s
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.3'
+          memory: 384M
 
 volumes:
   postgres_data:
