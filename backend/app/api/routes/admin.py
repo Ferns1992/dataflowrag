@@ -190,3 +190,156 @@ async def toggle_document_public(
     document.is_public = is_public
     db.commit()
     return {"id": document.id, "is_public": document.is_public}
+
+
+@router.get("/database/export")
+async def export_database(
+    current_user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db),
+):
+    import json
+    from datetime import datetime
+
+    users_data = []
+    for user in db.query(User).all():
+        users_data.append(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "hashed_password": user.hashed_password,
+                "role": user.role.value if hasattr(user.role, "value") else user.role,
+                "is_active": user.is_active,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            }
+        )
+
+    documents_data = []
+    for doc in db.query(Document).all():
+        documents_data.append(
+            {
+                "id": doc.id,
+                "filename": doc.filename,
+                "original_filename": doc.original_filename,
+                "file_path": doc.file_path,
+                "file_size": doc.file_size,
+                "mime_type": doc.mime_type,
+                "file_extension": doc.file_extension,
+                "folder_id": doc.folder_id,
+                "owner_id": doc.owner_id,
+                "is_public": doc.is_public,
+                "ocr_completed": doc.ocr_completed,
+                "vectorized": doc.vectorized,
+                "extracted_text": doc.extracted_text,
+                "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            }
+        )
+
+    access_data = []
+    for access in db.query(DocumentAccess).all():
+        access_data.append(
+            {
+                "id": access.id,
+                "document_id": access.document_id,
+                "user_id": access.user_id,
+                "can_read": access.can_read,
+                "can_write": access.can_write,
+                "can_delete": access.can_delete,
+            }
+        )
+
+    export_data = {
+        "version": "1.0",
+        "exported_at": datetime.utcnow().isoformat(),
+        "users": users_data,
+        "documents": documents_data,
+        "document_access": access_data,
+    }
+
+    return export_data
+
+
+@router.post("/database/import")
+async def import_database(
+    data: dict,
+    current_user: User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db),
+):
+    from datetime import datetime
+
+    if not data.get("version") or not data.get("users"):
+        raise HTTPException(status_code=400, detail="Invalid backup file format")
+
+    users_imported = 0
+    documents_imported = 0
+
+    existing_usernames = {u.username for u in db.query(User).all()}
+    existing_emails = {u.email for u in db.query(User).all()}
+
+    for user_data in data.get("users", []):
+        if user_data["username"] in existing_usernames:
+            continue
+
+        if user_data.get("email") and user_data["email"] in existing_emails:
+            continue
+
+        user = User(
+            username=user_data["username"],
+            email=user_data.get("email", ""),
+            hashed_password=user_data["hashed_password"],
+            role=user_data.get("role", "viewer"),
+            is_active=user_data.get("is_active", True),
+        )
+        db.add(user)
+        users_imported += 1
+
+    existing_doc_ids = {d.id for d in db.query(Document).all()}
+
+    for doc_data in data.get("documents", []):
+        if doc_data["id"] in existing_doc_ids:
+            continue
+
+        document = Document(
+            filename=doc_data["filename"],
+            original_filename=doc_data["original_filename"],
+            file_path=doc_data.get("file_path", ""),
+            file_size=doc_data.get("file_size", 0),
+            mime_type=doc_data.get("mime_type", ""),
+            file_extension=doc_data.get("file_extension", ""),
+            folder_id=doc_data.get("folder_id"),
+            owner_id=doc_data.get("owner_id"),
+            is_public=doc_data.get("is_public", False),
+            ocr_completed=doc_data.get("ocr_completed", False),
+            vectorized=doc_data.get("vectorized", False),
+            extracted_text=doc_data.get("extracted_text"),
+        )
+        db.add(document)
+        documents_imported += 1
+
+    for access_data in data.get("document_access", []):
+        existing = (
+            db.query(DocumentAccess)
+            .filter(
+                DocumentAccess.document_id == access_data["document_id"],
+                DocumentAccess.user_id == access_data["user_id"],
+            )
+            .first()
+        )
+
+        if not existing:
+            access = DocumentAccess(
+                document_id=access_data["document_id"],
+                user_id=access_data["user_id"],
+                can_read=access_data.get("can_read", True),
+                can_write=access_data.get("can_write", False),
+                can_delete=access_data.get("can_delete", False),
+            )
+            db.add(access)
+
+    db.commit()
+
+    return {
+        "message": "Import completed",
+        "users_imported": users_imported,
+        "documents_imported": documents_imported,
+    }

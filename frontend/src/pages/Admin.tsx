@@ -36,7 +36,7 @@ export default function Admin() {
   const [docAccess, setDocAccess] = useState<DocAccess[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'documents'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'documents' | 'backup'>('users');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newUser, setNewUser] = useState({ username: '', email: '', password: '', role: 'viewer' });
 
@@ -116,13 +116,78 @@ export default function Admin() {
     }
   };
 
-  const handleTabChange = async (tab: 'users' | 'documents') => {
+  const handleTabChange = async (tab: 'users' | 'documents' | 'backup') => {
     setActiveTab(tab);
     if (tab === 'documents') {
       await loadDocuments();
       setSelectedDoc(null);
       setDocAccess([]);
     }
+  };
+
+  const handleExportDatabase = async () => {
+    try {
+      const response = await fetch('/api/admin/database/export', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Export failed');
+      
+      const data = await response.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dataflowrag-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      alert('Backup downloaded successfully!');
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Failed to export database');
+    }
+  };
+
+  const handleImportDatabase = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!confirm('Import will merge data with existing records. Continue?')) {
+      e.target.value = '';
+      return;
+    }
+    
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      if (!data.version || !data.users || !data.documents) {
+        throw new Error('Invalid backup file format');
+      }
+      
+      const response = await fetch('/api/admin/database/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) throw new Error('Import failed');
+      
+      const result = await response.json();
+      alert(`Import successful! ${result.users_imported || 0} users, ${result.documents_imported || 0} documents imported.`);
+      loadUsers();
+    } catch (err: any) {
+      console.error('Import failed:', err);
+      alert('Failed to import database: ' + (err.message || 'Unknown error'));
+    }
+    
+    e.target.value = '';
   };
 
   const handleRoleChange = async (userId: number, newRole: string) => {
@@ -186,6 +251,12 @@ export default function Admin() {
           onClick={() => handleTabChange('documents')}
         >
           📄 Document Access
+        </button>
+        <button
+          className={`btn ${activeTab === 'backup' ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={() => handleTabChange('backup')}
+        >
+          💾 Backup
         </button>
       </div>
 
@@ -458,6 +529,51 @@ export default function Admin() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'backup' && (
+        <div className="card">
+          <h2 style={{ marginBottom: '24px' }}>💾 Database Backup & Restore</h2>
+          
+          <div style={{ display: 'grid', gap: '24px' }}>
+            <div style={{ padding: '24px', background: 'var(--bg-secondary)', borderRadius: '12px' }}>
+              <h3 style={{ marginBottom: '12px' }}>📤 Export Database</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                Download a backup file containing all users, documents metadata, and access permissions.
+                Uploaded files are NOT included in the backup.
+              </p>
+              <button className="btn btn-primary" onClick={handleExportDatabase}>
+                💾 Download Backup
+              </button>
+            </div>
+
+            <div style={{ padding: '24px', background: 'var(--bg-secondary)', borderRadius: '12px' }}>
+              <h3 style={{ marginBottom: '12px' }}>📥 Import Database</h3>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                Restore from a backup file. This will merge data with existing records.
+                Users with same username/email will be skipped.
+              </p>
+              <input
+                type="file"
+                accept=".json"
+                id="import-file"
+                style={{ display: 'none' }}
+                onChange={handleImportDatabase}
+              />
+              <button className="btn btn-primary" onClick={() => document.getElementById('import-file')?.click()}>
+                📥 Select Backup File
+              </button>
+            </div>
+
+            <div style={{ padding: '16px', background: 'rgba(255, 152, 0, 0.1)', borderRadius: '8px', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
+                ⚠️ <strong>Note:</strong> Document files (PDFs, images, etc.) are stored separately. 
+                Backup only contains metadata and access permissions. 
+                After server crash, you may need to re-upload documents.
+              </p>
+            </div>
           </div>
         </div>
       )}
